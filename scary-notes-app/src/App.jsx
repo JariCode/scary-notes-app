@@ -32,9 +32,6 @@ function App() {
     <div>
       {/* Sivun header (logo, kuu, sumu jne.) */}
       <Header />
-      
-      {/* Zombie taustaelementti */}
-      <div className="zombie"></div>
 
       {/* Pääsisältökontti */}
       <div className="container">
@@ -52,6 +49,9 @@ function App() {
         ))}
 
       </div>
+
+      {/* Zombie taustaelementti - sisällön jälkeen */}
+      <div className="zombie"></div>
     </div>
   );
 }
