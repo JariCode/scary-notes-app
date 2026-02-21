@@ -213,11 +213,19 @@ button:hover {
   margin: 24px 0;
   border-radius: 18px;
   color: #e8ffe2;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   box-shadow:
     0 0 40px rgba(57,255,20,0.08),
     inset 0 0 30px rgba(0,0,0,0.7);
   transition: 0.3s ease;
   animation: fadeIn 0.4s ease forwards;
+}
+
+.note-card h3,
+.note-card p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .note-card:hover {
