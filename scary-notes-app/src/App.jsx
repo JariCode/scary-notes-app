@@ -23,6 +23,11 @@ function App() {
     setNotes([...notes, { ...note, id: Date.now() }]);
   };
 
+  //Muokkaa muistiinpanoa id:n perusteella.
+  const editNote = (id, updatedNote) => {
+    setNotes(notes.map(note => note.id === id ? { ...note, ...updatedNote } : note));
+  }
+
   // Poistaa muistiinpanon id:n perusteella
   const deleteNote = (id) => {
     setNotes(notes.filter(note => note.id !== id));
@@ -44,6 +49,7 @@ function App() {
           <NoteCard
             key={note.id}
             note={note}
+            editNote={editNote}
             deleteNote={deleteNote}
           />
         ))}
