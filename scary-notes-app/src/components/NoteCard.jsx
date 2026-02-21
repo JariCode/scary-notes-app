@@ -5,9 +5,14 @@ import { useState } from "react";
 // - note: muistiinpanon tiedot (title, content, id)
 // - deleteNote: funktio muistiinpanon poistamiseen
 // - editNote: funktio muistiinpanon muokkaamiseen
-function NoteCard({ note, deleteNote, editNote }) {
+// - index: muistiinpanon indeksi listassa
+// - reorderNotes: funktio muistiinpanojen järjestyksen vaihtamiseen
+function NoteCard({ note, deleteNote, editNote, index, reorderNotes }) {
   // Tieto siitä, onko muistiinpano muokkaustilassa
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Tieto siitä, onko muistiinpano drag over -tilassa
+  const [isDragOver, setIsDragOver] = useState(false);
   
   // Väliaikaiset arvot muokkausta varten
   const [editedTitle, setEditedTitle] = useState(note.title);
@@ -33,9 +38,47 @@ function NoteCard({ note, deleteNote, editNote }) {
     setIsEditing(true);
   };
 
+  // Drag and Drop handlerit
+  const handleDragStart = (e) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("draggedIndex", index);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const draggedIndex = parseInt(e.dataTransfer.getData("draggedIndex"));
+    if (draggedIndex !== index) {
+      reorderNotes(draggedIndex, index);
+    }
+    setIsDragOver(false);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragOver(false);
+  };
+
   return (
     // Kortin ulompi säiliö
-    <div className="note-card">
+    <div 
+      className={`note-card ${isDragOver ? 'drag-over' : ''}`}
+      draggable="true"
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onDragEnd={handleDragEnd}
+      style={{ cursor: 'move' }}
+    >
       
       {isEditing ? (
         // Muokkaustila

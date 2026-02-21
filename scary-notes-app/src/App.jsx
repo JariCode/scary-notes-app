@@ -33,6 +33,14 @@ function App() {
     setNotes(notes.filter(note => note.id !== id));
   };
 
+  // Järjestää muistiinpanot uudelleen drag and drop:lla
+  const reorderNotes = (draggedIndex, targetIndex) => {
+    const newNotes = [...notes];
+    const [draggedNote] = newNotes.splice(draggedIndex, 1);
+    newNotes.splice(targetIndex, 0, draggedNote);
+    setNotes(newNotes);
+  };
+
   return (
     <div>
       {/* Sivun header (logo, kuu, sumu jne.) */}
@@ -45,12 +53,14 @@ function App() {
         <NoteForm addNote={addNote} />
 
         {/* Listataan kaikki muistiinpanot */}
-        {notes.map(note => (
+        {notes.map((note, index) => (
           <NoteCard
             key={note.id}
             note={note}
+            index={index}
             editNote={editNote}
             deleteNote={deleteNote}
+            reorderNotes={reorderNotes}
           />
         ))}
 
