@@ -59,7 +59,7 @@ function App() {
 
     const q = query(
       collection(db, "users", user.uid, "notes"),
-      orderBy("createdAt", "desc")
+      orderBy("order", "asc")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -81,7 +81,8 @@ function App() {
       collection(db, "users", user.uid, "notes"),
       {
         ...note,
-        createdAt: new Date()
+        createdAt: new Date(),
+        order: Date.now() // alustava järjestys
       }
     );
   };
@@ -105,12 +106,30 @@ function App() {
     );
   };
 
-  // Drag & Drop (vain UI)
-  const reorderNotes = (draggedIndex, targetIndex) => {
+  // Drag & Drop (UI + Firestore sync)
+  const reorderNotes = async (draggedIndex, targetIndex) => {
+    if (!user) return;
+
     const newNotes = [...notes];
     const [draggedNote] = newNotes.splice(draggedIndex, 1);
     newNotes.splice(targetIndex, 0, draggedNote);
+
+    // Päivitetään UI heti
     setNotes(newNotes);
+
+    // 🔥 Synkronoidaan järjestys Firestoreen
+    try {
+      await Promise.all(
+        newNotes.map((note, index) =>
+          updateDoc(
+            doc(db, "users", user.uid, "notes", note.id),
+            { order: index }
+          )
+        )
+      );
+    } catch (error) {
+      console.error("Reorder error:", error);
+    }
   };
 
   // ================= UI =================
@@ -155,13 +174,7 @@ function App() {
 
         </div>
       ) : (
-        <p
-          style={{
-            textAlign: "center",
-            marginTop: "2rem",
-            color: "#39ff14"
-          }}
-        >
+        <p className="login-hint">
           Kirjaudu sisään nähdäksesi muistiinpanosi
         </p>
       )}

@@ -20,6 +20,24 @@ function createWindow() {
   Menu.setApplicationMenu(null);
   win.maximize();
 
+  // 🔥 CSP - salli vain luotetut lähteet
+  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [
+          "default-src 'self'; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://apis.google.com; " +
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+          "font-src 'self' https://fonts.gstatic.com; " +
+          "connect-src 'self' http://localhost:5173 http://localhost:3456 https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.com; " +
+          "frame-src https://accounts.google.com https://*.firebaseapp.com; " +
+          "img-src 'self' data: https:;"
+        ]
+      }
+    });
+  });
+
   // 🔥 Salli vain Firebase auth popupit (turvallisuus)
   win.webContents.setWindowOpenHandler(({ url }) => {
     // Salli vain Google/Firebase auth URLit
@@ -111,4 +129,3 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
-

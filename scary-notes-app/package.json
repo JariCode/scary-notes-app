@@ -1,8 +1,9 @@
 {
   "name": "scary-notes-app",
+  "description": "Scary Notes desktop app",
   "author": "JariCode",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.2.1",
   "main": "electron.cjs",
   "type": "module",
   "scripts": {
@@ -12,7 +13,8 @@
     "preview": "vite preview",
     "electron": "electron .",
     "electron:dev": "concurrently \"vite\" \"electron .\"",
-    "dist:electron": "vite build && electron-builder"
+    "dist:electron": "vite build && electron-builder",
+    "dist:mac": "vite build && electron-builder --mac pkg"
   },
   "dependencies": {
     "firebase": "^12.9.0",
@@ -27,7 +29,7 @@
     "concurrently": "^9.2.1",
     "electron": "^40.6.0",
     "electron-builder": "^22.14.13",
-    "eslint": "^10.0.0",
+    "eslint": "^9.39.3",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
@@ -49,7 +51,7 @@
       "icon": "build/icon.ico"
     },
     "mac": {
-      "target": "dmg",
+      "target": "pkg",
       "icon": "build/icon.png"
     }
   }
