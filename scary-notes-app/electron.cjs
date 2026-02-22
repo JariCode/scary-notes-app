@@ -1,29 +1,114 @@
 const { app, BrowserWindow, Menu } = require("electron");
 const path = require("path");
+const http = require("http");
+const fs = require("fs");
+
+let localServer = null;
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
     backgroundColor: "#0b0f0c",
-    autoHideMenuBar: true, // piilottaa valikkorivin Windowsissa
+    autoHideMenuBar: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
   });
 
-  // Poistetaan menu kokonaan
   Menu.setApplicationMenu(null);
-
-  // Avaa koko näytölle
   win.maximize();
 
-  if (app.isPackaged) {
-    win.loadFile(path.join(__dirname, "dist", "index.html"));
-  } else {
+  // 🔥 Salli vain Firebase auth popupit (turvallisuus)
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    // Salli vain Google/Firebase auth URLit
+    if (url.includes("accounts.google.com") || 
+        url.includes("firebaseapp.com") ||
+        url.includes("googleapis.com")) {
+      return { action: "allow" };
+    }
+    // Estä muut popupit
+    return { action: "deny" };
+  });
+
+  if (!app.isPackaged) {
     win.loadURL("http://localhost:5173");
+  } else {
+    // Asennusversio käyttää paikallista HTTP-serveria
+    win.loadURL("http://localhost:3456");
   }
 }
 
-app.whenReady().then(createWindow);
+function startLocalServer() {
+  return new Promise((resolve) => {
+    if (!app.isPackaged) {
+      resolve();
+      return;
+    }
+
+    const distPath = path.join(__dirname, "dist");
+    
+    const mimeTypes = {
+      ".html": "text/html",
+      ".js": "text/javascript",
+      ".css": "text/css",
+      ".json": "application/json",
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".svg": "image/svg+xml",
+      ".ico": "image/x-icon",
+    };
+
+    localServer = http.createServer((req, res) => {
+      // Estä path traversal hyökkäykset
+      const sanitizedUrl = req.url.split("?")[0].replace(/\.\./g, "");
+      let filePath = path.join(distPath, sanitizedUrl === "/" ? "index.html" : sanitizedUrl);
+      
+      // Varmista että polku on dist-kansiossa
+      if (!filePath.startsWith(distPath)) {
+        res.writeHead(403);
+        res.end("Forbidden");
+        return;
+      }
+
+      if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(distPath, "index.html");
+      }
+
+      const ext = path.extname(filePath);
+      const contentType = mimeTypes[ext] || "application/octet-stream";
+
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          res.writeHead(404);
+          res.end("Not found");
+        } else {
+          res.writeHead(200, { "Content-Type": contentType });
+          res.end(data);
+        }
+      });
+    });
+
+    // Kuuntele VAIN localhost:ssa (127.0.0.1) - ei ulkoisesti
+    localServer.listen(3456, "127.0.0.1", () => {
+      console.log("Local server running on http://127.0.0.1:3456");
+      resolve();
+    });
+  });
+}
+
+app.whenReady().then(async () => {
+  await startLocalServer();
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (localServer) {
+    localServer.close();
+  }
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
 });
+

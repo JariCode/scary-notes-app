@@ -3,37 +3,109 @@ import NoteForm from "./components/NoteForm";
 import NoteCard from "./components/NoteCard";
 import Header from "./components/Header";
 
+import { auth, provider, db } from "./firebase";
+import {
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged
+} from "firebase/auth";
+
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+  onSnapshot,
+  query,
+  orderBy
+} from "firebase/firestore";
+
 function App() {
 
-  // Muistiinpanot stateen.
-  // Käytetään lazy initial statea, jotta localStorage luetaan vain kerran alussa.
-  const [notes, setNotes] = useState(() => {
-    const saved = localStorage.getItem("scaryNotes");
-    return saved ? JSON.parse(saved) : [];
-  });
+  // ================= AUTH =================
 
-  // Tallennetaan muistiinpanot localStorageen aina kun notes muuttuu
+  const [user, setUser] = useState(null);
+
   useEffect(() => {
-    localStorage.setItem("scaryNotes", JSON.stringify(notes));
-  }, [notes]);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
 
-  // Lisää uusi muistiinpano.
-  // Luodaan uniikki id Date.now():lla.
-  const addNote = (note) => {
-    setNotes([...notes, { ...note, id: Date.now() }]);
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login error:", error);
+    }
   };
 
-  //Muokkaa muistiinpanoa id:n perusteella.
-  const editNote = (id, updatedNote) => {
-    setNotes(notes.map(note => note.id === id ? { ...note, ...updatedNote } : note));
-  }
-
-  // Poistaa muistiinpanon id:n perusteella
-  const deleteNote = (id) => {
-    setNotes(notes.filter(note => note.id !== id));
+  const handleLogout = async () => {
+    await signOut(auth);
   };
 
-  // Järjestää muistiinpanot uudelleen drag and drop:lla
+  // ================= FIRESTORE NOTES =================
+
+  const [notes, setNotes] = useState([]);
+
+  useEffect(() => {
+    if (!user) {
+      setNotes([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, "users", user.uid, "notes"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notesArray = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setNotes(notesArray);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // CREATE
+  const addNote = async (note) => {
+    if (!user) return;
+
+    await addDoc(
+      collection(db, "users", user.uid, "notes"),
+      {
+        ...note,
+        createdAt: new Date()
+      }
+    );
+  };
+
+  // UPDATE
+  const editNote = async (id, updatedNote) => {
+    if (!user) return;
+
+    await updateDoc(
+      doc(db, "users", user.uid, "notes", id),
+      updatedNote
+    );
+  };
+
+  // DELETE
+  const deleteNote = async (id) => {
+    if (!user) return;
+
+    await deleteDoc(
+      doc(db, "users", user.uid, "notes", id)
+    );
+  };
+
+  // Drag & Drop (vain UI)
   const reorderNotes = (draggedIndex, targetIndex) => {
     const newNotes = [...notes];
     const [draggedNote] = newNotes.splice(draggedIndex, 1);
@@ -41,33 +113,61 @@ function App() {
     setNotes(newNotes);
   };
 
+  // ================= UI =================
+
   return (
     <div>
-      {/* Sivun header (logo, kuu, sumu jne.) */}
+
       <Header />
 
-      {/* Pääsisältökontti */}
-      <div className="container">
-        
-        {/* Lomake uuden muistiinpanon lisäämiseen */}
-        <NoteForm addNote={addNote} />
-
-        {/* Listataan kaikki muistiinpanot */}
-        {notes.map((note, index) => (
-          <NoteCard
-            key={note.id}
-            note={note}
-            index={index}
-            editNote={editNote}
-            deleteNote={deleteNote}
-            reorderNotes={reorderNotes}
-          />
-        ))}
-
+      <div className="auth-box">
+        {user ? (
+          <>
+            <h3 className="user-name">
+              {user.displayName}
+            </h3>
+            <button onClick={handleLogout}>
+              Kirjaudu ulos
+            </button>
+          </>
+        ) : (
+          <button onClick={handleLogin}>
+            Kirjaudu Googlella
+          </button>
+        )}
       </div>
 
-      {/* Zombie taustaelementti - sisällön jälkeen */}
+      {user ? (
+        <div className="container">
+
+          <NoteForm addNote={addNote} />
+
+          {notes.map((note, index) => (
+            <NoteCard
+              key={note.id}
+              note={note}
+              index={index}
+              editNote={editNote}
+              deleteNote={deleteNote}
+              reorderNotes={reorderNotes}
+            />
+          ))}
+
+        </div>
+      ) : (
+        <p
+          style={{
+            textAlign: "center",
+            marginTop: "2rem",
+            color: "#39ff14"
+          }}
+        >
+          Kirjaudu sisään nähdäksesi muistiinpanosi
+        </p>
+      )}
+
       <div className="zombie"></div>
+
     </div>
   );
 }
